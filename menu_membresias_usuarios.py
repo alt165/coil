@@ -274,5 +274,3 @@ def display_eliminacion_membresia_usuario():
 
 def display_modificacion_membresia_usuario():
     print("-- Modificacion de una membresia_usuario en la base de datos")
-
-control_menu()
