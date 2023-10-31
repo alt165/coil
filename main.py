@@ -50,8 +50,7 @@ def control_main():
             
             case 3:
                 # Entra al menú de la tabla de Membresias_usuarios.
-                #menu_membresias_usuarios.control_menu()
-                pass
+                menu_membresias_usuarios.control_menu()
             
             case 4:
                 # Termina el programa.

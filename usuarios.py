@@ -120,6 +120,28 @@ def buscar_todos_usuarios():
     
     # Retorna lista vacía si no se encontró, o con objetos Usuario si sí.
     return usuario_encontrado
+def buscar(nombr: str, apellid:str, ide:int):
+    consulta = f"SELECT * FROM usuario"
+    #consulta = f"SELECT * FROM usuario WHERE nombre LIKE %{nombre}% AND apellido LIKE %{apellido}% AND id_usuario LIKE %{id}%;"
+    conn = sqlite3.connect("usuario")
+    cursor = conn.cursor()
+    cursor.execute(consulta)
+    conn.close()
+    
+    # Si el retorno de la base de datos es una lista vacía, la función no
+    # retorna nada. De lo contrario retorna un objeto Usuario con los datos
+    # encontrados.
+    usuario_encontrado: list = []
+    if (len(datos_usuario) != 0):
+        usuario_encontrado.append(Usuario(datos_usuario[0][0],
+                                     datos_usuario[0][1],
+                                     datos_usuario[0][2],
+                                     datos_usuario[0][3],
+                                     datos_usuario[0][4]))
+    
+    # Retorna lista vacía si no se encontró, o con objetos Usuario si sí.
+    return usuario_encontrado
+
 
 def buscar_usuario(caracteristica: str, busqueda: str):
     """
