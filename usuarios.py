@@ -26,6 +26,14 @@ class Usuario:
         usuario_completo += f"{self.email}"
         
         return usuario_completo
+    
+    def lista(self):
+        lista: list = [self.id_usuario,
+                       self.nombre,
+                       self.apellido,
+                       self.direccion,
+                       self.email]
+        return lista
 
 
 def imprimir_lista_usuarios(usuarios: list):
@@ -120,28 +128,113 @@ def buscar_todos_usuarios():
     
     # Retorna lista vacía si no se encontró, o con objetos Usuario si sí.
     return usuario_encontrado
-def buscar(nombr: str, apellid:str, ide:int):
-    consulta = f"SELECT * FROM usuario"
-    #consulta = f"SELECT * FROM usuario WHERE nombre LIKE %{nombre}% AND apellido LIKE %{apellido}% AND id_usuario LIKE %{id}%;"
+
+def buscar_consulta_especifica(consulta: str, parametros: tuple):
+    # Se busca a todos los usuarios que coincidan con la consulta dada por el
+    # string, que especifica los campos específicos buscados.
     conn = sqlite3.connect("usuario")
     cursor = conn.cursor()
-    cursor.execute(consulta)
+    cursor.execute(consulta, parametros)
+    datos_usuario = cursor.fetchall()
     conn.close()
     
-    # Si el retorno de la base de datos es una lista vacía, la función no
-    # retorna nada. De lo contrario retorna un objeto Usuario con los datos
-    # encontrados.
-    usuario_encontrado: list = []
-    if (len(datos_usuario) != 0):
-        usuario_encontrado.append(Usuario(datos_usuario[0][0],
-                                     datos_usuario[0][1],
-                                     datos_usuario[0][2],
-                                     datos_usuario[0][3],
-                                     datos_usuario[0][4]))
+    # Se retorna una lista con objetos Usuario's que contienen la información
+    # de cada Usuario que coincide con la búsqueda.
+    usuario_encontrado: Usuario = []
+    for elem in datos_usuario:
+        usuario_encontrado.append(Usuario(elem[0],
+                                          elem[1],
+                                          elem[2],
+                                          elem[3],
+                                          elem[4]))
     
-    # Retorna lista vacía si no se encontró, o con objetos Usuario si sí.
     return usuario_encontrado
 
+def buscar_usuario_especifico(inputs_usuario: list):
+    """
+    Busca un usuario específico en la base de datos. Recibe una lista con los
+    datos de id_usuario, nombre, apellido, email y direccion (en orden), y
+    realiza la consulta a la base de datos con esta información.
+
+    Parameters
+    ----------
+    inputs_usuario : list
+        Lista de strings con los datos de: id_usuario, nombre, apellido, email,
+        direccion (en orden).
+
+    Returns
+    -------
+    resultado : list
+        Lista con objetos Usuario's que contienen la información encontrada de
+        la consulta realizada a la base de datos.
+
+    """
+    
+    # Genera una tupla con:
+    # - 1: la consulta en SQL a la base de datos (según el input del usuario)
+    # - 2: la tupla con los datos para la consulta a la base de datos, según
+    #      ese mismo input del usuario.
+    consulta_SQL = generar_consulta(inputs_usuario)
+    
+    return buscar_consulta_especifica(consulta_SQL[0], consulta_SQL[1])
+
+def generar_consulta(consultas: list):
+    """
+    Genera un string para hacerle la consulta a la base de datos en SQL, en
+    la tabla de "usuarios". La misma utiliza los inputs de los 5 campos:
+    id_usuario, nombre, apellido, email, direccion.
+
+    Parameters
+    ----------
+    consultas : list
+        DESCRIPTION.
+
+    Returns
+    -------
+    consulta_resultado : TYPE
+        DESCRIPTION.
+    parametros : TYPE
+        DESCRIPTION.
+
+    """
+    # Nombres (en orden) de los campos de la base de datos.
+    campos: list = ["id_usuario",
+                    "nombre",
+                    "apellido",
+                    "email",
+                    "direccion"]
+    
+    # Genera una lista con los campos a agregar a la consulta en SQL.
+    consulta: list = []
+    
+    # Datos de cada campo, respecto a la consulta correspondiente a cada campo.
+    # Tiene los datos ingresados por el usuario.
+    parametros: list = []
+    
+    # Indice para verificar la posición en la lista.
+    indice: int = 0
+    
+    for i in consultas:
+        if (len(i) > 0):
+            consulta.append(campos[indice])
+            parametros.append(i)
+        indice += 1
+        
+    # Se castea de list a tuple.
+    parametros = tuple(parametros)
+    
+    consulta_resultado: str = "SELECT * FROM usuario WHERE"
+    agregar_and: bool = False
+    
+    for j in consulta:
+        if (agregar_and):
+            consulta_resultado += " AND"
+        
+        consulta_resultado += f" {j} = ?"
+        
+        agregar_and = True
+    
+    return consulta_resultado, parametros
 
 def buscar_usuario(caracteristica: str, busqueda: str):
     """
