@@ -183,6 +183,109 @@ def buscar_todas_membresias_usuarios():
     # Retorna lista vacía si no se encontró, o con objetos Usuario si sí.
     return membresia_usuario_encontrada
 
+def buscar_consulta_especifica(consulta: str, parametros: tuple):
+    # Se busca a todos los usuarios que coincidan con la consulta dada por el
+    # string, que especifica los campos específicos buscados.
+    conn = sqlite3.connect("usuario")
+    cursor = conn.cursor()
+    cursor.execute(consulta, parametros)
+    datos_membresia_usuario = cursor.fetchall()
+    conn.close()
+    
+    # Se retorna una lista con objetos Membresia_usuario's que contienen la
+    # información de cada Membresia_usuario que coincide con la búsqueda.
+    membresia_usuario_encontrada: list = []
+    for elem in datos_membresia_usuario:
+        membresia_usuario_encontrada.append(Membresia_usuario(elem[0],
+                                                              elem[1],
+                                                              elem[2]))
+    
+    return membresia_usuario_encontrada
+
+def buscar_membresia_usuario_especifico(inputs_usuario: list):
+    """
+    Busca una membresia_usuario específico en la base de datos. Recibe una
+    lista con los datos de id_usuario, id_membresia y vencimiento (en orden), y
+    realiza la consulta a la base de datos con esta información.
+
+    Parameters
+    ----------
+    inputs_usuario : list
+        Lista de strings con los datos de: id_membresia y tipo (en orden).
+
+    Returns
+    -------
+    resultado : list
+        Lista con objetos Membresia's que contienen la información encontrada
+        de la consulta realizada a la base de datos.
+
+    """
+    
+    # Genera una tupla con:
+    # - 1: la consulta en SQL a la base de datos (según el input del usuario)
+    # - 2: la tupla con los datos para la consulta a la base de datos, según
+    #      ese mismo input del usuario.
+    consulta_SQL = generar_consulta(inputs_usuario)
+    
+    return buscar_consulta_especifica(consulta_SQL[0], consulta_SQL[1])
+
+def generar_consulta(consultas: list):
+    """
+    Genera un string para hacerle la consulta a la base de datos en SQL, en
+    la tabla de "membresia_usuario". La misma utiliza los inputs de los 3
+    campos:
+    id_usuario, id_membresia, vencimiento.
+
+    Parameters
+    ----------
+    consultas : list
+        DESCRIPTION.
+
+    Returns
+    -------
+    consulta_resultado : TYPE
+        DESCRIPTION.
+    parametros : TYPE
+        DESCRIPTION.
+
+    """
+    # Nombres (en orden) de los campos de la base de datos.
+    campos: list = ["id_usuario",
+                    "id_membresia",
+                    "vencimiento"]
+    
+    # Genera una lista con los campos a agregar a la consulta en SQL.
+    consulta: list = []
+    
+    # Datos de cada campo, respecto a la consulta correspondiente a cada campo.
+    # Tiene los datos ingresados por el usuario.
+    parametros: list = []
+    
+    # Indice para verificar la posición en la lista.
+    indice: int = 0
+    
+    for i in consultas:
+        if (len(i) > 0):
+            consulta.append(campos[indice])
+            parametros.append(i)
+        indice += 1
+        
+    # Se castea de list a tuple.
+    parametros = tuple(parametros)
+    
+    consulta_resultado: str = "SELECT * FROM membresia_usuario WHERE"
+    agregar_and: bool = False
+    
+    for j in consulta:
+        if (agregar_and):
+            consulta_resultado += " AND"
+        
+        consulta_resultado += f" {j} = ?"
+        
+        agregar_and = True
+    
+    return consulta_resultado, parametros
+
 def buscar_membresia_usuario(caracteristica: str, busqueda: str):
     """
     Busca una membresia_usuario en la base de datos. (tabla membresia_usuario)
