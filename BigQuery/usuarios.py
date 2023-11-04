@@ -225,6 +225,86 @@ def buscar_direccion(client: bigquery.Client, limite: int, direccion: str):
     # Retorna las filas de la tabla obtenida en la consulta.
     return ejecutar_consulta_especifica(client, QUERY)
 
+def buscar_email(client: bigquery.Client, limite: int, email: str):
+    """
+    Busca por email una cantidad determinada de usuarios en la dataset.
+    Utiliza como criterio de búsqueda el campo CORREO_E_USR.
+    La búsqueda no es por palabras que coincidan exactamente con el parámetro
+    ingresado. Por ejemplo, si el e-mail es "hola@email.com" y se buscó
+    "hola", el resultado probablemente pueda aparecer (dependerá del límite
+    de resultados que se quiera obtener, no de la coincidencia exacta de TODOS
+    los caracteres del parámetro).
+    La cantidad de resultados obtenidos se indica con el "limite".
+
+    Parameters
+    ----------
+    client : bigquery.Client
+        Cliente autenticado en Google para utilizar BigQuery.
+    limite : int
+        Cantidad de usuarios mayor a cero (limite > 0) a consultar (límite de
+        usuarios a recibir).
+    email : str
+        Correo Electrónico / E-mail del usuario que se busca en la dataset.
+
+    Returns
+    -------
+    rows : google.cloud.bigquery.table.RowIterator
+        RowIterator de Google / Tabla con todos la información obtenida de la
+        consulta.
+
+    """
+    # Se verifican precondiciones.
+    if (limite <= 0):
+        raise Exception("Valor invalido: limite <= 0.")
+    
+    # Se genera la QUERY para el SQL de BigQuery.
+    QUERY: str = ("SELECT * FROM `coil2023.Biblioteca.USUARIO` "
+                  f"WHERE CORREO_E_USR LIKE '%{email}%' "
+                  f"LIMIT {limite}")
+    
+    # Retorna las filas de la tabla obtenida en la consulta.
+    return ejecutar_consulta_especifica(client, QUERY)
+
+def buscar_id_membresia(client: bigquery.Client, limite: int,
+                          id_membresia: int):
+    """
+    Realiza una búsqueda por el ID de la MEMBRESIA correspondiente a un usuario
+    en la dataset. Utiliza como criterio de búsqueda el campo ID_MEMBRESIA.
+    La búsqueda debe coincidir exactamente con el ID escrito en el parámetro.
+    La cantidad de resultados obtenidos se indica con el "limite".
+
+    Parameters
+    ----------
+    client : bigquery.Client
+        Cliente autenticado en Google para utilizar BigQuery.
+    limite : int
+        Cantidad de usuarios mayor a cero (limite > 0) a consultar (límite de
+        usuarios a recibir).
+    id_membresia : int
+        ID de la MEMBRESIA del usuario que se busca en la dataset. DEBE ser un
+        número entero válido.
+
+    Returns
+    -------
+    rows : google.cloud.bigquery.table.RowIterator
+        RowIterator de Google / Tabla con todos la información obtenida de la
+        consulta.
+
+    """
+    # Se verifican precondiciones.
+    if (limite <= 0):
+        raise Exception("Valor invalido: limite <= 0.")
+    if (type(id_membresia) != int):
+        raise Exception("Valor invalido: id_membresia no entero (int).")
+    
+    # Se genera la QUERY para el SQL de BigQuery.
+    QUERY: str = ("SELECT * FROM `coil2023.Biblioteca.USUARIO` "
+                  f"WHERE ID_MEMBRESIA = {id_membresia} "
+                  f"LIMIT {limite}")
+    
+    # Retorna las filas de la tabla obtenida en la consulta.
+    return ejecutar_consulta_especifica(client, QUERY)
+
 """
 # Ruta al archivo de credenciales JSON.
 credentials = service_account.Credentials.from_service_account_file('../credenciales/coil2023-6672f55c3eb6.json')
