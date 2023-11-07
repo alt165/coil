@@ -196,8 +196,11 @@ def buscar_membresia_especifica(client: bigquery.Client, inputs_usuario: list):
         google.cloud.bigquery.table.RowIterator
             Resultado de la consulta que contiene las membresías que coinciden con los criterios.
     """
-    consulta_SQL = generar_consulta(inputs_usuario)
+    if all(elemento == "" for elemento in inputs_usuario):
+        return ""
     
+    consulta_SQL = generar_consulta(inputs_usuario)
+
     return buscar_consulta_especifica(client, consulta_SQL)
 #bien :^)
 
@@ -260,9 +263,6 @@ def generar_consulta(consultas: list):
         else:
             cant_inputs_vacios += 1
         indice += 1
-        
-    if cant_inputs_vacios == len(consultas):
-        return ""
 
     consulta_resultado: str = "SELECT * FROM `coil2023.Biblioteca.MEMBRESIA` WHERE"
 
@@ -278,39 +278,6 @@ def generar_consulta(consultas: list):
         else:
             consulta_resultado += f" {consulta[j]} = '{parametros[j]}'"
         mas_de_un_campo = True
-    print(consulta_resultado)
+    #print(consulta_resultado)
     return consulta_resultado
 #bien :^)
-
-
-# Ruta al archivo de credenciales JSON.
-credentials = service_account.Credentials.from_service_account_file('coil2023-6672f55c3eb6.json')
-
-# Se instancia el cliente con las credenciales del proyecto COIL.
-client = bigquery.Client(credentials=credentials, project=credentials.project_id)
-
-#test = buscar_membresia_especifica(client, ["", "Basica", ""])
-"""
-print(test)
-for i in test:
-    print(f"{i}")
-"""
-#"2023-12-12"
-fecha = datetime.date(2023,12,20)
-creado_nuevo = crear_membresia(client, [1234567890, "Testeador", fecha])
-
-fecha2 = datetime.date(2023,12,1)
-#modificado = modificar_membresia(1234567890,"Super Tester",fecha2)
-
-#borrado = eliminar_membresia(1234567890)
-
-print(creado_nuevo)
-#print(modificado)
-#print(borrado)
-"""
-test2 = buscar_todas_membresias(client)
-
-for i in test2:
-    print(f"{i}")
-"""
-
