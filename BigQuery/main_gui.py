@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 26 18:56:35 2023
+
+@author: UNRN
+"""
+
+import flet as ft
+import usuarios_v2 as usr
+import membresias_v2 as mem
+
+from google.cloud import bigquery
 from google.oauth2 import service_account
 
 # Ruta al archivo de credenciales JSON.
