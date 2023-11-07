@@ -5,224 +5,86 @@ Created on Tue Oct 24 14:04:14 2023
 @author: Cristian, Esteban, Pepe
 """
 
-import sqlite3
+import datetime
 
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
+def validar_creacion_membresia(inputs_usuario: list):
+    validado = False
+    if len(inputs_usuario) > 3:
+        raise Exception("ERROR al crear membresia: Demasiados Inputs")
+    if len(str(inputs_usuario[0])) > 10:
+        raise Exception("ERROR al crear membresia: ID incorrecto")
+    if len(str(inputs_usuario[1])) > 20:
+        raise Exception("ERROR al crear membresia: TIPO incorrecto")
+    if str(inputs_usuario[2]) < str(datetime.datetime.now()):
+        raise Exception("ERROR al crear membresia: VENCIMIENTO incorrecto")
+    validado = True
+    return validado
 
-class Membresia:
-    def __init__(self, id_membresia: int, tipo: str, vencimiento: str):
-        self.id_membresia = id_membresia
-        self.tipo = tipo
-        self.vencimiento = vencimiento
-    
-    def __str__(self):
-        membresia_completa: str = f"{self.id_membresia}" + "\t"
-        membresia_completa += f"{self.tipo}"
-        membresia_completa += f"{self.vencimiento}"
-        
-        return membresia_completa
-
-def imprimir_lista_membresias(membresias: list):
-    """
-    Imprime una lista de Membresia (objeto). Imprime cada atributo del objeto.
-
-    Parameters
-    ----------
-    membresias : list
-        Lista de membresias a imprimir.
-
-    Returns
-    -------
-    None.
-
-    """
-    for membresia in membresias:
-        print(membresia)
-
-def crear_membresia(id_membresia: int, tipo: str):
-    """
-        Crea una membresia en la base de datos. Esta función que se comunica con la
-        base de datos.
-        En caso de que no se pueda dar de alta, imprime un mensaje con el error
-        que haya ocurrido.
-
-        Parameters
-        ----------
-        id_membresia : int
-            ID de la membresia (es única).
-        tipo : str
-            Tipo de membresia.
-
-        Returns
-        -------
-        membresia_creada : bool
-            Retorna True en caso de que haya podido crear la membresia en la
-            base de datos. Caso contrario retorna False.
-    """
-    membresia_creada: bool = True
-
-    conn = sqlite3.connect("usuario")
-    cursor = conn.cursor()
-    
+def crear_membresia(cliente: bigquery.Client, inputs_usuario: list):
     try:
-        cursor.execute("INSERT INTO membresia (id_membresia, tipo, vencimiento) VALUES (?, ?, ?)", (id_membresia, tipo, vencimiento))
-        conn.commit()
+        if validar_creacion_membresia(inputs_usuario):
+            consulta = f"INSERT INTO `coil2023.Biblioteca.MEMBRESIA` (ID_MEMBRESIA, TIPO_MEMBRESIA, FECHA_VENCIM_MEMBRE) VALUES ({inputs_usuario[0]}, \"{inputs_usuario[1]}\", '{inputs_usuario[2]}')"
+            query_job = client.query(consulta)
+            datos_membresia = query_job.result()
+            print("Creación exitosa")
+            return True
+        else:
+            return False
     except Exception as exc:
-        membresia_creada = False
-        print(f"Error al crear membresia en la base de datos: {type(exc)}")
+        print(f"Error al crear membresia en la base de datos: {exc}")
 
-    conn.close()
-    
-    return membresia_creada
 
 def eliminar_membresia(id_membresia: int):
-    """
-        Elimina una membresia en la base de datos, por medio de una id_membresia
-        otorgada.
-        
-        Parameters
-        ----------
-        id_membresia : int
-            ID de la membresia a eliminar en la base de datos.
+    try:
+        #if validar_destruccion_membresia(inputs_usuario):
+        consulta = f"DELETE FROM `coil2023.Biblioteca.MEMBRESIA` WHERE ID_MEMBRESIA = {id_membresia}"
+        query_job = client.query(consulta)
+        datos_membresia = query_job.result()
+        print("Eliminación exitosa")
+        return True
+        #else:
+        #    return False
+    except Exception as exc:
+        print(f"Error al borrar membresia en la base de datos: {exc}")
 
-        Returns
-        -------
-        membresia_encontrada : bool
-            Retorna True en caso de que haya podido encontrar la membresia. En ese
-            caso, fue borrado. De lo contrario, retorna False.
-    """
-    membresia_encontrada: bool = True
-    
-    # Se busca la membresia en la base de datos y se la borra.
-    cursor.execute("DELETE FROM membresia WHERE id_membresia=?", (id_membresia,))
-    conn.commit()
-    
-    # Si no se encontró ninguna membresia, entonces no se realizaron cambios en
-    # la base de datos.
-    if (cursor.rowcount == 0):
-        membresia_encontrada = False
-    
-    return membresia_encontrada
-
-def modificar_membresia(id_membresia: int, tipo: str, vencimiento: str):
-    """
-        Busca y modifica una membresia dentro de la base de datos. Si la encuentra,
-        la modifica. Caso contrario no realiza cambios en la base de datos.
-
-        Parameters
-        ----------
-        id_membresia : int
-            ID de la membresia dentro de la base de datos. Es un valor único.
-        tipo : str
-            Tipo de membresia.
-
-        Returns
-        -------
-        membresia_encontrada : bool
-            Retorna True si se encontró la membresia, por medio de su id_membresia,
-            y se lo modificó. Caso contrario, retorna False porque no se encontró
-            y, por ende, no se realizó ninguna modificación.
-    """
-    membresia_encontrada: bool = True
-    
-    # Se busca modificar la membresia, por medio de su id_membresia.
-    cursor.execute("UPDATE  `coil2023.Biblioteca.MEMBRESIA` SET tipo=? WHERE id_membresia=?", (tipo, id_membresia))
-    conn.commit()
-    
-    # Verifica si se encontró y modificó la membresia especificada.
-    if (cursor.rowcount == 0):
-        membresia_encontrada = False
-    
-    return membresia_encontrada
-
+def modificar_membresia(id_membresia, tipo, vencimiento):
+    try:
+        inputs_usuario = [id_membresia, tipo, vencimiento]
+        if validar_creacion_membresia(inputs_usuario):
+            consulta = f"UPDATE `coil2023.Biblioteca.MEMBRESIA` SET TIPO_MEMBRESIA='{tipo}', FECHA_VENCIM_MEMBRE='{vencimiento}' WHERE ID_MEMBRESIA = {id_membresia}"
+            query_job = client.query(consulta)
+            datos_membresia = query_job.result()
+            print("Modificación exitosa")
+            return True
+        else:
+            return False
+    except Exception as exc:
+        print(f"Error al modificar membresia en la base de datos: {exc}")
 
 def buscar_todas_membresias(cliente: bigquery.Client):
-    """
-        Busca a todas las membresias en la base de datos.
-
-        Returns
-        -------
-        membresia_encontrada : list
-            Lista de objetos de tipo Membresia (con toda la información encontrada
-            en la base de datos).
-    """
-    # Se busca a todas las membresias en la base de datos, y se obtiene su
-    # información.
-
-    query_job = client.query("SELECT * FROM `coil2023.Biblioteca.MEMBRESIA`")  # API request
+    query_job = client.query("SELECT * FROM `coil2023.Biblioteca.MEMBRESIA`")
     datos_membresia = query_job.result()
-
-    # Si el retorno de la base de datos es una lista vacía, la función no
-    # retorna nada. De lo contrario retorna una lista con objetos Membresia con
-    # los datos encontrados.
-    membresia_encontrada: Membresia = []
-    for elem in datos_membresia:
-        membresia_encontrada.append(Membresia(elem[0], elem[1], elem[2]))
     
-    # Retorna lista vacía si no se encontró, o con objetos Membresia si sí.
-    return membresia_encontrada
+    return datos_membresia
 #bien :^)
 
 def buscar_membresia_especifica(client: bigquery.Client, inputs_usuario: list):
-    """
-        Busca una membresia específico en la base de datos. Recibe una lista con
-        los datos de id_membresia y tipo (en orden), y realiza la consulta a la
-        base de datos con esta información.
-
-        Parameters
-        ----------
-        inputs_usuario : list
-            Lista de strings con los datos de: id_membresia y tipo (en orden).
-
-        Returns
-        -------
-        resultado : list
-            Lista con objetos Membresia's que contienen la información encontrada
-            de la consulta realizada a la base de datos.
-    """
-    
     consulta_SQL = generar_consulta(inputs_usuario)
     
     return buscar_consulta_especifica(client, consulta_SQL)
 #bien :^)
 
 def buscar_consulta_especifica(client: bigquery.Client, consulta: str):
-    # Se busca a todos los usuarios que coincidan con la consulta dada por el
-    # string, que especifica los campos específicos buscados.
-
-    query_job = client.query(consulta)  # API request
-    datos_membresia = query_job.result()  # Waits for query to finish
-
-    # Se retorna una lista con objetos Membresia's que contienen la información
-    # de cada Membresia que coincide con la búsqueda.
-    membresia_encontrada: list = []
-    for elem in datos_membresia:
-        membresia_encontrada.append(Membresia(elem[0], elem[1], elem[2]))
+    query_job = client.query(consulta)
+    datos_membresia = query_job.result() 
     
-    return membresia_encontrada
+    return datos_membresia
 #bien :^)
 
 def generar_consulta(consultas: list):
-    """
-        Genera un string para hacerle la consulta a la base de datos en SQL, en
-        la tabla de "membresias". La misma utiliza los inputs de los 2 campos:
-        id_membresia, tipo.
-
-        Parameters
-        ----------
-        consultas : list
-            DESCRIPTION.
-
-        Returns
-        -------
-        consulta_resultado : TYPE
-            DESCRIPTION.
-        parametros : TYPE
-            DESCRIPTION.
-    """
-    # Nombres (en orden) de los campos de la base de datos.
     campos: list = ["ID_MEMBRESIA",
                     "TIPO_MEMBRESIA",
                     "FECHA_VENCIM_MEMBRE"]
@@ -236,11 +98,10 @@ def generar_consulta(consultas: list):
     
     # Indice para verificar la posición en la lista.
     indice: int = 0
-
-    cant_inputs_vacios = 0
+    cant_inputs_vacios: int = 0
     
     for i in consultas:
-        if (len(i) > 0):
+        if (len(str(i)) > 0):
             consulta.append(campos[indice])
             parametros.append(i)
         else:
@@ -248,21 +109,26 @@ def generar_consulta(consultas: list):
         indice += 1
         
     if cant_inputs_vacios == len(consultas):
-        return consultas
+        return ""
 
     consulta_resultado: str = "SELECT * FROM `coil2023.Biblioteca.MEMBRESIA` WHERE"
-    agregar_and: bool = False
-    
+
+    mas_de_un_campo = False
+
     for j in range(0, len(consulta)):
-        if (agregar_and):
-            consulta_resultado += " AND"
-        
-        consulta_resultado += f" {consulta[j]} = '{parametros[j]}'"
-        
-        agregar_and = True
-    
+        if mas_de_un_campo:
+            consulta_resultado += " AND "
+        if consulta[j] == campos[0]:
+            consulta_resultado += f" {consulta[j]} LIKE %{parametros[j]}%"
+        elif consulta[j] == campos[1]:
+            consulta_resultado += f" {consulta[j]} LIKE '%{parametros[j]}%'"
+        else:
+            consulta_resultado += f" {consulta[j]} = '{parametros[j]}'"
+        mas_de_un_campo = True
+
     return consulta_resultado
 #bien :^)
+
 
 # Ruta al archivo de credenciales JSON.
 credentials = service_account.Credentials.from_service_account_file('coil2023-6672f55c3eb6.json')
@@ -271,6 +137,23 @@ credentials = service_account.Credentials.from_service_account_file('coil2023-66
 client = bigquery.Client(credentials=credentials, project=credentials.project_id)
 
 
-test = buscar_todas_membresias(client)
+#test = buscar_membresia_especifica(client, ["", "", "2023-05-05"])
 
-print(test)
+#print(test)
+#"2023-12-12"
+fecha = datetime.date(2023,12,20)
+#creado_nuevo = crear_membresia(client, [1234567890, "Testeador2", fecha])
+
+fecha2 = datetime.date(2023,12,1)
+#modificado = modificar_membresia(1234567890,"Super Tester",fecha2)
+
+borrado = eliminar_membresia(1234567890)
+
+
+#print(creado_nuevo)
+#print(modificado)
+print(borrado)
+test2 = buscar_todas_membresias(client)
+
+for i in test2:
+    print(f"{i}")
