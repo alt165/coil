@@ -10,6 +10,7 @@ import datetime
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
+
 def validar_creacion_membresia(cliente: bigquery.Client, inputs_usuario: list):
     """
         Valida que los datos ingresados sean válidos para crear una membresía.
@@ -31,30 +32,33 @@ def validar_creacion_membresia(cliente: bigquery.Client, inputs_usuario: list):
     """
     validado = False
     if len(inputs_usuario) > 3:
-        raise Exception("ERROR al crear membresia: Demasiados Inputs")
+        raise Exception("Demasiados Inputs")
     if validar_ID_MEMBRESIA(cliente, inputs_usuario[0]):
-        raise Exception("ERROR al crear membresia:  Membresia existente")
+        raise Exception("Membresia existente")
     if len(str(inputs_usuario[1])) > 20:
-        raise Exception("ERROR al crear membresia: TIPO incorrecto")
+        raise Exception("TIPO incorrecto")
+    #se verifica que se haya pasado algo parecido a un DATE
+    if not validar_fecha(inputs_usuario[2]):
+        raise Exception("VENCIMIENTO incorrecto, no es una fecha")
     if str(inputs_usuario[2]) < str(datetime.datetime.now()):
-        raise Exception("ERROR al crear membresia: VENCIMIENTO incorrecto")
+        raise Exception("VENCIMIENTO incorrecto, no es una fecha valida")
     validado = True
     return validado
 
 def validar_ID_MEMBRESIA(cliente: bigquery.Client, ID_MEMBRESIA: int):
     existe_ID: bool = False
-    
+
     # Se verifica que la longitud del ID.
     if (len(str(ID_MEMBRESIA)) <= 0):
-        raise Exception("ERROR al crear membresia:  Valor invalido, longitud del ID_MEMBRESIA no valida.")
+        raise Exception("ID invalido, longitud del ID_MEMBRESIA no es valida.")
     if (len(str(ID_MEMBRESIA)) > 10):
-        raise Exception("ERROR al crear membresia:  Valor invalido, longitud del ID_MEMBRESIA mayor a 10.")
+        raise Exception("ID invalido, longitud del ID_MEMBRESIA debe de ser menor de 10 caracteres.")
     
     # Se verifica que sea un número entero.
     try:
         int(ID_MEMBRESIA) # Si falla el casteo, no es un número entero.
     except:
-        raise Exception("ERROR al crear membresia:  Valor invalido, se esperaba un numero entero para ID_MEMBRESIA.")
+        raise Exception("ID invalido, se esperaba un numero entero para ID_MEMBRESIA.")
     
     # Si ingresó el cliente de BigQuery, entonces realiza la búsqueda para ver
     # si existe algún usuario con ese ID.
@@ -63,6 +67,20 @@ def validar_ID_MEMBRESIA(cliente: bigquery.Client, ID_MEMBRESIA: int):
         if (consulta_ID.total_rows != 0):
             existe_ID = True
     return existe_ID
+
+def validar_fecha(fecha_str):
+    partes = fecha_str.split('-')  # Suponiendo un formato YYYY-MM-DD
+
+    if len(partes) != 3:
+        return False
+
+    try:
+        año, mes, dia = map(int, partes)
+        datetime.date(año, mes, dia)
+        return True
+    except Exception as exc:
+        return False
+
 
 def crear_membresia(cliente: bigquery.Client, inputs_usuario: list):
     """
@@ -88,11 +106,12 @@ def crear_membresia(cliente: bigquery.Client, inputs_usuario: list):
             query_job = cliente.query(consulta)
             datos_membresia = query_job.result()
             print("Creación exitosa")
-            return True
+            return True, ""
         else:
-            return False
+            return False, ""
     except Exception as exc:
-        print(f"Error al crear membresia en la base de datos: {exc}")
+        print(f"{exc}")
+        return False, f"Error al crear membresia en la base de datos: {exc}"
 
 def eliminar_membresia(cliente: bigquery.Client, id_membresia: int):
     """
@@ -117,13 +136,14 @@ def eliminar_membresia(cliente: bigquery.Client, id_membresia: int):
         query_job = cliente.query(consulta)
         datos_membresia = query_job.result()
         print("Eliminación exitosa")
-        return True
+        return True, ""
         #else:
         #    return False
     except Exception as exc:
         print(f"Error al borrar membresia en la base de datos: {exc}")
+        return False, f"{exc}"
 
-def modificar_membresia(cliente: bigquery.Client, id_membresia: int, tipo: str, vencimiento: str):
+def modificar_membresia(cliente: bigquery.Client, inputs_usuario: list):
     """
         Modifica una membresía en la base de datos de BigQuery.
 
@@ -147,17 +167,31 @@ def modificar_membresia(cliente: bigquery.Client, id_membresia: int, tipo: str, 
             True si la membresía se modifica con éxito, False en caso contrario.
     """
     try:
-        inputs_usuario = [id_membresia, tipo, vencimiento]
-        if validar_creacion_membresia(inputs_usuario):
+        id_membresia = inputs_usuario[0]
+        if id_membresia == "":
+            return False, "Se requiere un ID para aplicar una modificación"
+        
+        elemento_a_modificar = buscar_membresia_especifica(cliente, inputs_usuario)
+        if len(elemento_a_modificar) != 1:
+            return False, "No existe esa membresia"
+
+        tipo = inputs_usuario[1]
+
+        vencimiento = inputs_usuario[2]
+        if vencimiento == "":
+                vencimiento = elemento_a_modificar.FECHA_VENCIM_MEMBRE
+        
+        if validar_creación_membresia([id_membresia, tipo, vencimiento]):
             consulta = f"UPDATE `coil2023.Biblioteca.MEMBRESIA` SET TIPO_MEMBRESIA='{tipo}', FECHA_VENCIM_MEMBRE='{vencimiento}' WHERE ID_MEMBRESIA = {id_membresia}"
             query_job = cliente.query(consulta)
             datos_membresia = query_job.result()
             print("Modificación exitosa")
-            return True
+            return True, ""
         else:
-            return False
+            return False, ""
     except Exception as exc:
         print(f"Error al modificar membresia en la base de datos: {exc}")
+        return False, f"{exc}"
 
 def buscar_todas_membresias(cliente: bigquery.Client):
     """
@@ -179,6 +213,7 @@ def buscar_todas_membresias(cliente: bigquery.Client):
     return datos_membresia
 #bien :^)
 
+
 def buscar_membresia_especifica(client: bigquery.Client, inputs_usuario: list):
     """
         Busca membresías en la base de datos de BigQuery con criterios específicos.
@@ -196,12 +231,14 @@ def buscar_membresia_especifica(client: bigquery.Client, inputs_usuario: list):
         google.cloud.bigquery.table.RowIterator
             Resultado de la consulta que contiene las membresías que coinciden con los criterios.
     """
-    if all(elemento == "" for elemento in inputs_usuario):
-        return ""
-    
-    consulta_SQL = generar_consulta(inputs_usuario)
 
-    return buscar_consulta_especifica(client, consulta_SQL)
+    if  inputs_usuario[2] != "" and not validar_fecha(inputs_usuario[2]):
+        raise Exception("fecha erronea al momento de buscarla")
+
+    consulta_SQL = generar_consulta(inputs_usuario)
+    resultado = buscar_consulta_especifica(client, consulta_SQL)
+    
+    return resultado
 #bien :^)
 
 def buscar_consulta_especifica(client: bigquery.Client, consulta: str):
