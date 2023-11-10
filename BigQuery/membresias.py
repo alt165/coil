@@ -171,24 +171,27 @@ def modificar_membresia(cliente: bigquery.Client, inputs_usuario: list):
         if id_membresia == "":
             return False, "Se requiere un ID para aplicar una modificación"
         
-        elemento_a_modificar = buscar_membresia_especifica(cliente, inputs_usuario)
-        if len(elemento_a_modificar) != 1:
+        elemento_a_modificar = buscar_membresia_especifica(cliente, [id_membresia, "", ""])
+        if elemento_a_modificar.total_rows != 1:
             return False, "No existe esa membresia"
 
         tipo = inputs_usuario[1]
 
+        for elem in elemento_a_modificar:
+            elem_a_modificar = elem
+
         vencimiento = inputs_usuario[2]
         if vencimiento == "":
-                vencimiento = elemento_a_modificar.FECHA_VENCIM_MEMBRE
-        
-        if validar_creación_membresia([id_membresia, tipo, vencimiento]):
-            consulta = f"UPDATE `coil2023.Biblioteca.MEMBRESIA` SET TIPO_MEMBRESIA='{tipo}', FECHA_VENCIM_MEMBRE='{vencimiento}' WHERE ID_MEMBRESIA = {id_membresia}"
-            query_job = cliente.query(consulta)
-            datos_membresia = query_job.result()
-            print("Modificación exitosa")
-            return True, ""
+                vencimiento = elem_a_modificar.FECHA_VENCIM_MEMBRE
         else:
-            return False, ""
+            validar_fecha(vencimiento)
+        
+        consulta = f"UPDATE `coil2023.Biblioteca.MEMBRESIA` SET TIPO_MEMBRESIA='{tipo}', FECHA_VENCIM_MEMBRE='{vencimiento}' WHERE ID_MEMBRESIA = {id_membresia}"
+        query_job = cliente.query(consulta)
+        datos_membresia = query_job.result()
+        print("Modificación exitosa")
+        return True, ""
+
     except Exception as exc:
         print(f"Error al modificar membresia en la base de datos: {exc}")
         return False, f"{exc}"
@@ -318,3 +321,35 @@ def generar_consulta(consultas: list):
     #print(consulta_resultado)
     return consulta_resultado
 #bien :^)
+
+"""
+    # Ruta al archivo de credenciales JSON.
+    credentials = service_account.Credentials.from_service_account_file('coil2023-6672f55c3eb6.json')
+
+    # Se instancia el cliente con las credenciales del proyecto COIL.
+    client = bigquery.Client(credentials=credentials, project=credentials.project_id)
+
+    #test = buscar_membresia_especifica(client, ["", "Basica", ""])
+
+    print(test)
+    for i in test:
+        print(f"{i}")
+
+    #"2023-12-12"
+    fecha = datetime.date(2023,12,20)
+    creado_nuevo = crear_membresia(client, [1234567890, "Testeador", fecha])
+
+    fecha2 = datetime.date(2023,12,1)
+    #modificado = modificar_membresia(1234567890,"Super Tester",fecha2)
+
+    #borrado = eliminar_membresia(1234567890)
+
+    print(creado_nuevo)
+    #print(modificado)
+    #print(borrado)
+
+    test2 = buscar_todas_membresias(client)
+
+    for i in test2:
+        print(f"{i}")
+"""
