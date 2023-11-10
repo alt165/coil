@@ -1,0 +1,400 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 26 18:56:35 2023
+
+@author: UNRN
+"""
+
+import flet as ft
+import usuarios as usr
+import membresias as mem
+
+from google.cloud import bigquery
+from google.oauth2 import service_account
+
+class TablaMembresia:
+    def __init__ (self, client: bigquery.Client):
+        self.client = client
+
+        # Se inicializa una tabla con los nombres de los campos de la tabla.
+        self.columnas: list = [
+            ft.DataColumn(ft.Text("ID")),
+            ft.DataColumn(ft.Text("TIPO" )),
+            ft.DataColumn(ft.Text("VENCIMIENTO")),
+        ]
+
+        self.filas: list = []
+        
+        self.id_membresia           = None
+        self.tipo_membresia         = None
+        self.vencimiento_membresia  = None
+
+        
+        # Se guardan en atributos las funcionalidades del programa.
+        self.consultar_todos_membresia = None
+        self.consultar_membresia       = None
+        self.modificar_membresia       = None
+        self.crear_membresia           = None
+        self.eliminar_membresia        = None
+
+    def gui_membresias(self):
+        def consultar_todos_membresia():
+            # Se hace la consulta a la base de datos.
+            resultados: list = mem.buscar_todas_membresias(self.client)
+            
+            filas: list = []
+            
+            for fila in resultados:
+                filas.append(ft.DataRow(cells = [ft.DataCell(ft.Text(str(fila.ID_MEMBRESIA))),
+                                                 ft.DataCell(ft.Text(fila.TIPO_MEMBRESIA)),
+                                                 ft.DataCell(ft.Text(fila.FECHA_VENCIM_MEMBRE))
+                                                 ]))
+            
+            # Se actualizan las filas.
+            self.filas = filas
+            
+            # Se actualiza la tabla.
+            tabla           = ft.DataTable(
+                columns = self.columnas,
+                rows    = self.filas
+            )
+            contenedor_tabla = ft.Container(tabla, alignment=ft.alignment.center)
+
+            estructura = ft.Column([
+                contenedor_header,
+                contenedor_menu,
+                contenedor_tabla
+            ])
+            
+            # Se actualiza el contenedor para que muestre el menú nuevo.
+            contenedor.content = ft.Container(
+                estructura,
+                alignment=ft.alignment.center
+            )
+
+            contenedor.update()
+        
+        def consultar_membresia():
+            input_usuario: list = [self.id_membresia.value,
+                                   self.tipo_membresia.value,
+                                   self.vencimiento_membresia.value]
+            
+            # Se genera la tabla
+            columnas: list =[
+                ft.DataColumn(ft.Text("id_membresia")),
+                ft.DataColumn(ft.Text("tipo")),
+                ft.DataColumn(ft.Text("vencimiento"))
+            ]
+            
+            resultados: list = mem.buscar_membresia_especifica(self.client, input_usuario)
+
+            filas: list = []
+        
+            for fila in resultados:
+                filas.append(ft.DataRow(cells = [ft.DataCell(ft.Text(str(fila.ID_MEMBRESIA))),
+                                                 ft.DataCell(ft.Text(fila.TIPO_MEMBRESIA)),
+                                                 ft.DataCell(ft.Text(fila.FECHA_VENCIM_MEMBRE))
+                                                 ]))
+            
+            # Se actualizan las filas.
+            self.filas = filas
+            
+            # Se actualiza la tabla.
+            tabla           = ft.DataTable(
+                columns = self.columnas,
+                rows    = self.filas
+            )
+            contenedor_tabla = ft.Container(tabla, alignment=ft.alignment.center)
+            
+            estructura = ft.Column([
+                contenedor_header,
+                contenedor_menu,
+                contenedor_tabla
+                ])
+        
+            # Se actualiza el contenedor para que muestre el menú nuevo.
+            contenedor.content = ft.Container(
+                estructura,
+                alignment=ft.alignment.center
+            )
+
+            contenedor.update()
+            
+        
+        def modificar_membresia():
+            # Se hace la consulta a la base de datos.
+            input_usuario: list = [self.id_membresia.value,
+                                   self.tipo_membresia.value,
+                                   self.vencimiento_membresia.value]
+        
+            #resultados: bool
+            #mensaje: str
+            resultados, mensaje = mem.modificar_membresia(self.client, input_usuario)
+        
+        def crear_membresia():
+            # Se hace la consulta a la base de datos.
+            res = mem.crear_membresia(
+                self.client,
+                [self.id_membresia.value,
+                self.tipo_membresia.value,
+                self.vencimiento_membresia.value]
+            )
+            
+        
+        def eliminar_membresia():
+            # Se hace la consulta a la base de datos.
+            resultados = mem.eliminar_membresia(
+                self.client,
+                self.id_membresia.value)
+        
+        def actualizar_menu():
+            """
+            Actualiza el menú según la opción elegida en el Dropdown.
+
+            Returns
+            -------
+            None.
+
+            """
+            if (drop1.value == "Consultas"):
+                contenedor_menu = self.gui_contenedor_consultas()
+            elif (drop1.value == "Modificación"):
+                contenedor_menu = self.gui_contenedor_modificacion()
+            elif (drop1.value == "Alta"):
+                contenedor_menu = self.gui_contenedor_alta()
+            elif (drop1.value == "Baja"):
+                contenedor_menu = self.gui_contenedor_baja()
+            else:
+                print("Pifiaste en el nombre del dropdown... revisalo")
+            
+            # Se actualiza el contenedor para que muestre el menú nuevo.
+            estructura = ft.Column([
+                contenedor_header,
+                contenedor_menu,
+                contenedor_tabla
+            ])
+            contenedor.content = ft.Container(
+                estructura,
+                alignment=ft.alignment.center
+            )
+            contenedor.update()
+        
+        self.consultar_todos_membresia = consultar_todos_membresia
+        self.consultar_membresia       = consultar_membresia
+        self.modificar_membresia       = modificar_membresia
+        self.crear_membresia           = crear_membresia
+        self.eliminar_membresia        = eliminar_membresia
+
+        text1 = ft.Text("Tabla Membresia", weight=ft.FontWeight.BOLD)
+        
+        contenedor_menu = self.gui_contenedor_consultas()
+        
+        drop1 = ft.Dropdown(
+            width=200,
+            options=[
+                    ft.dropdown.Option("Consultas"),
+                    ft.dropdown.Option("Modificación"),
+                    ft.dropdown.Option("Alta"),
+                    ft.dropdown.Option("Baja")
+                    ],
+                    on_change = lambda _: actualizar_menu()
+                    )
+        #lambda _:print(f"dropdown ha cambiado de valor a {drop1.value})"
+        drop1.value = "Consultas"
+
+        contenedor_header = ft.Container(ft.Row([text1, drop1]), alignment=ft.alignment.center)
+
+        
+
+        tabla            = ft.DataTable(
+            columns = self.columnas,
+            rows    = self.filas
+        )
+        contenedor_tabla = ft.Container(tabla, alignment=ft.alignment.center)
+        
+        contenedor = ft.Container(content=ft.Column([contenedor_header, contenedor_menu, contenedor_tabla]))
+
+        return contenedor
+        
+    def gui_contenedor_consultas(self):
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        field_id          = ft.TextField(label="ID",keyboard_type=ft.KeyboardType.NUMBER, width=450)
+        field_tipo        = ft.TextField(label="Tipo", width=450)
+        field_vencimiento = ft.TextField(label="Vencimiento", width=450)
+
+        btn_todos       = ft.ElevatedButton("Consultar todos los membresias", width=250,
+                                            on_click=lambda _: self.consultar_todos_membresia())
+        btn_accion      = ft.ElevatedButton("Consultar membresia", width=200,
+                                            on_click=lambda _: self.consultar_membresia())
+        
+        botones         = ft.Row([btn_todos, btn_accion])
+        
+        # Se agrega una línea de división horizontal.
+        division        = ft.Divider()
+
+        # Se asignan los campos de texto a los atributos del objeto.
+        self.id_membresia           = field_id
+        self.tipo_membresia         = field_tipo
+        self.vencimiento_membresia  = field_vencimiento
+        
+        # Se crea la tabla correspondiente a la estructura que debe tener
+        # la tabla de los campos de texto.
+        campos_de_texto = ft.Column([
+            field_id,
+            field_tipo,
+            field_vencimiento,
+        ])
+        
+        
+        # Se hace la estructura final para meterlo adentro del contenedor
+        # final.
+        estructura      = ft.Column([
+            campos_de_texto,
+            botones,
+            division
+        ])
+        
+        # Se crea el contenedor que contenga los campos de texto.
+        contenedor_menu = ft.Container(estructura)
+        
+        return contenedor_menu
+        
+    def gui_contenedor_modificacion(self):
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        field_id          = ft.TextField(label="ID",keyboard_type=ft.KeyboardType.NUMBER, width=450)
+        field_tipo        = ft.TextField(label="Tipo", width=450)
+        field_vencimiento = ft.TextField(label="Vencimiento", width=450)
+
+        btn_todos       = ft.ElevatedButton("---", width=250, disabled=True)
+        btn_accion      = ft.ElevatedButton("Modificar Membresía", width=200,
+                                            on_click=lambda _: self.modificar_membresia())
+        
+        botones         = ft.Row([btn_todos, btn_accion])
+        
+        # Se agrega una línea de división horizontal.
+        division        = ft.Divider()
+
+        # Se asignan los campos de texto a los atributos del objeto.
+        self.id_membresia           = field_id
+        self.tipo_membresia         = field_tipo
+        self.vencimiento_membresia  = field_vencimiento
+        
+        # Se crea la tabla correspondiente a la estructura que debe tener
+        # la tabla de los campos de texto.
+        campos_de_texto = ft.Column([
+            field_id,
+            field_tipo,
+            field_vencimiento,
+        ])
+        
+        
+        # Se hace la estructura final para meterlo adentro del contenedor
+        # final.
+        estructura      = ft.Column([
+            campos_de_texto,
+            botones,
+            division
+        ])
+        
+        # Se crea el contenedor que contenga los campos de texto.
+        contenedor_menu = ft.Container(estructura)
+        
+        return contenedor_menu
+    
+    def gui_contenedor_alta(self):
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        field_id          = ft.TextField(label="ID",keyboard_type=ft.KeyboardType.NUMBER, width=450)
+        field_tipo        = ft.TextField(label="Tipo", width=450)
+        field_vencimiento = ft.TextField(label="Vencimiento", width=450)
+
+        btn_todos       = ft.ElevatedButton("---", width=250, disabled=True)
+        btn_accion      = ft.ElevatedButton("Crear Membresía", width=200,
+                                            on_click=lambda _: self.crear_membresia())
+        
+        botones         = ft.Row([btn_todos, btn_accion])
+        
+        # Se agrega una línea de división horizontal.
+        division        = ft.Divider()
+
+        # Se asignan los campos de texto a los atributos del objeto.
+        self.id_membresia           = field_id
+        self.tipo_membresia         = field_tipo
+        self.vencimiento_membresia  = field_vencimiento
+        
+        # Se crea la tabla correspondiente a la estructura que debe tener
+        # la tabla de los campos de texto.
+        campos_de_texto = ft.Column([
+            field_id,
+            field_tipo,
+            field_vencimiento,
+        ])
+        
+        estructura      = ft.Column([
+            campos_de_texto,
+            botones,
+            division
+        ])
+
+        # Se crea el contenedor que contenga los campos de texto.
+        contenedor_menu = ft.Container(estructura)
+        
+        return contenedor_menu
+
+    def gui_contenedor_baja(self):
+        # Se instancia cada campo de texto que el usuario debe llenar.
+        field_id          = ft.TextField(label="ID",keyboard_type=ft.KeyboardType.NUMBER, width=450)
+        field_tipo        = ft.TextField(label="Tipo", width=450, disabled=True)
+        field_vencimiento = ft.TextField(label="Vencimiento", width=450, disabled=True)
+
+        btn_todos       = ft.ElevatedButton("---", width=250, disabled=True)
+        btn_accion      = ft.ElevatedButton("Eliminar Membresía", width=200,
+                                            on_click=lambda _: self.eliminar_membresia())
+        
+        botones         = ft.Row([btn_todos, btn_accion])
+        
+        # Se agrega una línea de división horizontal.
+        division        = ft.Divider()
+
+        # Se asignan los campos de texto a los atributos del objeto.
+        self.id_membresia           = field_id
+        self.tipo_membresia         = field_tipo
+        self.vencimiento_membresia  = field_vencimiento
+        
+        # Se crea la tabla correspondiente a la estructura que debe tener
+        # la tabla de los campos de texto.
+        campos_de_texto = ft.Column([
+            field_id,
+            field_tipo,
+            field_vencimiento,
+        ])
+        
+        
+        # Se hace la estructura final para meterlo adentro del contenedor
+        # final.
+        estructura      = ft.Column([
+            campos_de_texto,
+            botones,
+            division
+        ])
+        
+        # Se crea el contenedor que contenga los campos de texto.
+        contenedor_menu = ft.Container(estructura)
+        
+        return contenedor_menu
+        
+"""        
+def main(page):
+    tabla = TablaMembresia(client)
+    page.window_width = 800
+    page.window_height = 600
+    page.window_center()
+    page.scroll = "always"
+
+    page.add(tabla.gui_membresias())
+        
+        
+ft.app(target=main)
+"""
