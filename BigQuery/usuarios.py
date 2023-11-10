@@ -322,6 +322,8 @@ def buscar_usuario_especifico(client: bigquery.Client,
 
     Parameters
     ----------
+    client : bigquery.Client
+        Cliente autenticado en Google para utilizar BigQuery.
     inputs_usuario : list
         Lista de strings con los datos de los campos ID_USUARIO, NOMBRE_USR,
         APELLIDO_USR, DIRECCION_USR, CORREO_E_USR y ID_MEMBRESIA (en orden).
@@ -651,3 +653,79 @@ def eliminar_usuario(client: bigquery.Client, ID_USUARIO: str):
     ejecutar_consulta_especifica(client, QUERY)
     
     return existe_usuario
+
+def modificar_usuario_especifico(client: bigquery.Client,
+                                     inputs_usuario: list):
+    """
+    Modifica un usuario, según los campos específicos que estén completos, en
+    la dataset de BigQuery. Recibe una lista con los datos de los campos
+    ID_USUARIO, NOMBRE_USR, APELLIDO_USR, DIRECCION_USR, CORREO_E_USR y
+    ID_MEMBRESIA (en orden), y realiza la consulta a la base de datos con esta
+    información.
+    Por ejemplo, la lista de 'inputs_usuario' puede contener los siguientes
+    datos: ["", "Jorge", "Perez", "", "", ""]. Así la consulta será para
+    modificar exclusivamente los campos de NOMBRE_USR y APELLIDO_USR, con
+    "Jorge" y "Perez" respectivamente.
+
+    Parameters
+    ----------
+    client : bigquery.Client
+        Cliente autenticado en Google para utilizar BigQuery.
+    inputs_usuario : list
+        Lista de strings con los datos de los campos ID_USUARIO, NOMBRE_USR,
+        APELLIDO_USR, DIRECCION_USR, CORREO_E_USR y ID_MEMBRESIA (en orden).
+        Los campos vacíos deben ser strings vacíos: "".
+
+    Returns
+    -------
+    rows : google.cloud.bigquery.table.RowIterator
+        RowIterator de Google / Tabla con todos la información obtenida de la
+        consulta.
+
+    """
+    # Se copian los inputs del usuario.
+    ID_USUARIO      = inputs_usuario[0]
+    NOMBRE_USR      = inputs_usuario[1]
+    APELLIDO_USR    = inputs_usuario[2]
+    DIRECCION_USR   = inputs_usuario[3]
+    CORREO_E_USR    = inputs_usuario[4]
+    ID_MEMBRESIA    = inputs_usuario[5]
+    
+    # Se validan los datos ingresados en los parámetros.
+    if not validar_ID_USUARIO(client, ID_USUARIO):
+        # Si no existe un ID_USUARIO idéntico, se lanza excepción.
+        raise Exception("Error: no existe un usuario con ese ID_USUARIO.")
+    
+    usuario_anterior = buscar_id_usuario(client, 1, int(ID_USUARIO))
+    fila_usuario_anterior = next(usuario_anterior)
+    if len(NOMBRE_USR) == 0:
+        NOMBRE_USR = fila_usuario_anterior.NOMBRE_USR
+    if len(APELLIDO_USR) == 0:
+        APELLIDO_USR = fila_usuario_anterior.APELLIDO_USR
+    if len(DIRECCION_USR) == 0:
+        DIRECCION_USR = fila_usuario_anterior.DIRECCION_USR
+    if len(CORREO_E_USR) == 0:
+        CORREO_E_USR = fila_usuario_anterior.CORREO_E_USR
+    if len(ID_MEMBRESIA) == 0:
+        ID_MEMBRESIA = fila_usuario_anterior.ID_MEMBRESIA
+    else:
+        if not validar_ID_MEMBRESIA(client, ID_MEMBRESIA):
+            # Si no existe un ID_MEMBRESIA idéntico, se lanza excepción.
+            raise Exception("Error: "
+                            "no existe una membresia con ese ID_MEMBRESIA.")
+     
+    validar_NOMBRE_USR(NOMBRE_USR)
+    validar_APELLIDO_USR(APELLIDO_USR)
+    validar_DIRECCION_USR(DIRECCION_USR)
+    validar_CORREO_E_USR(CORREO_E_USR)
+    
+    # Se genera la QUERY en SQL para modificar al usuario, según su ID_USUARIO.
+    QUERY: str = ("UPDATE `coil2023.Biblioteca.USUARIO` SET "
+                  f"NOMBRE_USR='{NOMBRE_USR}', "
+                  f"APELLIDO_USR='{APELLIDO_USR}', "
+                  f"DIRECCION_USR='{DIRECCION_USR}', "
+                  f"CORREO_E_USR='{CORREO_E_USR}', "
+                  f"ID_MEMBRESIA={ID_MEMBRESIA} "
+                  f"WHERE ID_USUARIO = {ID_USUARIO}")
+    
+    return ejecutar_consulta_especifica(client, QUERY)
